@@ -1,0 +1,1 @@
+ALTER FUNCTION public.match_documents(extensions.vector, integer, jsonb) SET search_path = public, extensions;
