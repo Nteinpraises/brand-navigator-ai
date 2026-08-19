@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-type Json = string[] | Record<string, string>;
+import { DEFAULT_AUDIENCES, DEFAULT_PILLARS } from "@/lib/brand-defaults";
 
 export type BrandProfileInput = {
+  id?: string;
   name: string | null;
   professional_title: string | null;
   positioning: string | null;
@@ -79,109 +79,152 @@ export const getBrandWorkspace = createServerFn({ method: "GET" })
 
 export const saveBrandProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: BrandProfileInput & { id?: string }) => data)
+  .inputValidator((data: BrandProfileInput) => data)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const payload = { ...data, user_id: userId } as Record<string, unknown>;
-    if (data.id) {
-      const { error } = await supabase.from("brand_profiles").update(payload).eq("id", data.id);
+    const { id, ...rest } = data;
+    const payload = { ...rest, user_id: userId };
+    if (id) {
+      const { error } = await supabase
+        .from("brand_profiles")
+        .update(payload as never)
+        .eq("id", id);
       if (error) throw new Error(error.message);
-      return { id: data.id };
+      return { id };
     }
-    delete payload['id'];
     const { data: inserted, error } = await supabase
       .from("brand_profiles")
       .insert(payload as never)
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { id: inserted.id };
+    return { id: (inserted as { id: string }).id };
   });
 
-function upsertFn<T extends { id?: string }>(table: "audiences" | "content_pillars" | "personal_stories" | "case_studies") {
-  return createServerFn({ method: "POST" })
-    .middleware([requireSupabaseAuth])
-    .inputValidator((data: T) => data)
-    .handler(async ({ data, context }) => {
-      const { supabase, userId } = context;
-      const payload = { ...(data as Record<string, unknown>), user_id: userId };
-      const id = data.id;
-      if (id) {
-        delete payload['id'];
-        const { error } = await supabase.from(table).update(payload as never).eq("id", id);
-        if (error) throw new Error(error.message);
-        return { id };
-      }
-      delete payload['id'];
-      const { data: inserted, error } = await supabase
-        .from(table)
-        .insert(payload as never)
-        .select("id")
-        .single();
+export const saveAudience = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: AudienceInput) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { id, ...rest } = data;
+    const payload = { ...rest, user_id: userId };
+    if (id) {
+      const { error } = await supabase
+        .from("audiences")
+        .update(payload as never)
+        .eq("id", id);
       if (error) throw new Error(error.message);
-      return { id: (inserted as { id: string }).id };
-    });
-}
+      return { id };
+    }
+    const { data: inserted, error } = await supabase
+      .from("audiences")
+      .insert(payload as never)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: (inserted as { id: string }).id };
+  });
 
-function deleteFn(table: "audiences" | "content_pillars" | "personal_stories" | "case_studies") {
-  return createServerFn({ method: "POST" })
-    .middleware([requireSupabaseAuth])
-    .inputValidator((data: { id: string }) => data)
-    .handler(async ({ data, context }) => {
-      const { error } = await context.supabase.from(table).delete().eq("id", data.id);
+export const savePillar = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: PillarInput) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { id, ...rest } = data;
+    const payload = { ...rest, user_id: userId };
+    if (id) {
+      const { error } = await supabase
+        .from("content_pillars")
+        .update(payload as never)
+        .eq("id", id);
       if (error) throw new Error(error.message);
-      return { ok: true };
-    });
-}
+      return { id };
+    }
+    const { data: inserted, error } = await supabase
+      .from("content_pillars")
+      .insert(payload as never)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: (inserted as { id: string }).id };
+  });
 
-export const saveAudience = upsertFn<AudienceInput>("audiences");
-export const deleteAudience = deleteFn("audiences");
-export const savePillar = upsertFn<PillarInput>("content_pillars");
-export const deletePillar = deleteFn("content_pillars");
-export const saveStory = upsertFn<StoryInput>("personal_stories");
-export const deleteStory = deleteFn("personal_stories");
-export const saveCaseStudy = upsertFn<CaseStudyInput>("case_studies");
-export const deleteCaseStudy = deleteFn("case_studies");
+export const saveStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: StoryInput) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { id, ...rest } = data;
+    const payload = { ...rest, user_id: userId };
+    if (id) {
+      const { error } = await supabase
+        .from("personal_stories")
+        .update(payload as never)
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      return { id };
+    }
+    const { data: inserted, error } = await supabase
+      .from("personal_stories")
+      .insert(payload as never)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: (inserted as { id: string }).id };
+  });
 
-const DEFAULT_AUDIENCES = [
-  "Founders & SMB Owners",
-  "Digital & Marketing Agencies",
-  "SaaS Founders & Startup Teams",
-  "High-Volume Service Businesses",
-  "Coaches, Consultants & Personal Brands",
-];
+export const saveCaseStudy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: CaseStudyInput) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { id, ...rest } = data;
+    const payload = { ...rest, user_id: userId };
+    if (id) {
+      const { error } = await supabase
+        .from("case_studies")
+        .update(payload as never)
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      return { id };
+    }
+    const { data: inserted, error } = await supabase
+      .from("case_studies")
+      .insert(payload as never)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: (inserted as { id: string }).id };
+  });
 
-const DEFAULT_PILLARS = ["Teach", "Build in Public", "Business Problems", "Trends & Commentary"];
+export const deleteBrandRecord = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      id: string;
+      table: "audiences" | "content_pillars" | "personal_stories" | "case_studies";
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from(data.table).delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 export const seedBrandDefaults = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { kind: "audiences" | "pillars" }) => data)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (data.kind === "audiences") {
-      const { data: existing } = await supabase.from("audiences").select("name");
-      const have = new Set((existing ?? []).map((r) => r.name));
-      const rows = DEFAULT_AUDIENCES.filter((n) => !have.has(n)).map((name) => ({
-        name,
-        user_id: userId,
-      }));
-      if (rows.length) {
-        const { error } = await supabase.from("audiences").insert(rows);
-        if (error) throw new Error(error.message);
-      }
-      return { added: rows.length };
-    }
-    const { data: existing } = await supabase.from("content_pillars").select("name");
-    const have = new Set((existing ?? []).map((r) => r.name));
-    const rows = DEFAULT_PILLARS.filter((n) => !have.has(n)).map((name) => ({
-      name,
-      user_id: userId,
-    }));
+    const table = data.kind === "audiences" ? "audiences" : "content_pillars";
+    const names = data.kind === "audiences" ? DEFAULT_AUDIENCES : DEFAULT_PILLARS;
+
+    const { data: existing } = await supabase.from(table).select("name");
+    const have = new Set((existing ?? []).map((row) => row.name));
+    const rows = names.filter((name) => !have.has(name)).map((name) => ({ name, user_id: userId }));
     if (rows.length) {
-      const { error } = await supabase.from("content_pillars").insert(rows);
+      const { error } = await supabase.from(table).insert(rows as never);
       if (error) throw new Error(error.message);
     }
     return { added: rows.length };
   });
-
-export type { Json };
