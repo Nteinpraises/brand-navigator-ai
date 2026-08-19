@@ -44,7 +44,7 @@ function BrandProfilePage() {
                     {data.profile.name ?? "Untitled profile"}
                   </p>
                   <p className="text-muted-foreground">{data.profile.positioning ?? "—"}</p>
-                  <p className="text-muted-foreground">Tone: {data.profile.tone_of_voice ?? "—"}</p>
+                  <p className="text-muted-foreground">Tone: {data.profile.tone ?? "—"}</p>
                 </>
               ) : (
                 <p className="text-muted-foreground">
@@ -54,7 +54,7 @@ function BrandProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-1.5">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-base">Audiences</CardTitle>
             </CardHeader>
