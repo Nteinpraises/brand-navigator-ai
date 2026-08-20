@@ -44,7 +44,8 @@ export const Route = createFileRoute("/_authenticated/brand-profile")({
   component: BrandProfilePage,
 });
 
-type Row = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
 
 function arr(value: unknown): string[] {
   return Array.isArray(value) ? (value as string[]) : [];
@@ -398,7 +399,10 @@ function AudienceSection({ rows, onSaved }: { rows: Row[]; onSaved: () => void }
               </div>
               <Button
                 onClick={async () => {
-                  if (!row.name?.trim()) return toast.error("Name is required.");
+                  if (!row.name?.trim()) {
+                    toast.error("Name is required.");
+                    return;
+                  }
                   try {
                     await save({
                       data: {
@@ -500,7 +504,10 @@ function PillarSection({ rows, onSaved }: { rows: Row[]; onSaved: () => void }) 
               />
               <Button
                 onClick={async () => {
-                  if (!row.name?.trim()) return toast.error("Name is required.");
+                  if (!row.name?.trim()) {
+                    toast.error("Name is required.");
+                    return;
+                  }
                   try {
                     await save({
                       data: {
