@@ -10,9 +10,9 @@ import { getAutomationRuns } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — Content Intelligence" },
+      { title: "Settings - Content Intelligence" },
       { name: "description", content: "Automation run history and workspace configuration." },
-      { property: "og:title", content: "Settings — Content Intelligence" },
+      { property: "og:title", content: "Settings - Content Intelligence" },
       { property: "og:description", content: "Automation run history and workspace configuration." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -50,7 +50,7 @@ function SettingsPage() {
                 <div>
                   <p className="font-medium">{run.workflow_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {run.run_date ?? "—"} {run.error_message ? `· ${run.error_message}` : ""}
+                    {run.run_date ?? "-"} {run.error_message ? `· ${run.error_message}` : ""}
                   </p>
                 </div>
                 <StatusBadge status={run.status} />

@@ -10,9 +10,9 @@ import { getVisuals } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/visuals")({
   head: () => ({
     meta: [
-      { title: "Visuals — Content Intelligence" },
+      { title: "Visuals - Content Intelligence" },
       { name: "description", content: "Visual prompts and Gamma generations for each piece of content." },
-      { property: "og:title", content: "Visuals — Content Intelligence" },
+      { property: "og:title", content: "Visuals - Content Intelligence" },
       { property: "og:description", content: "Visual prompts and Gamma generations for each piece of content." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -35,10 +35,10 @@ function VisualsPage() {
           emptyTitle="No visual prompts yet"
           emptyHint="Visual prompts and their Gamma generations will show up here."
           columns={[
-            { key: "type", header: "Type", render: (r) => r.visual_type ?? "—" },
-            { key: "concept", header: "Concept", render: (r) => r.concept ?? "—" },
-            { key: "style", header: "Style", render: (r) => r.style ?? "—" },
-            { key: "ratio", header: "Ratio", render: (r) => r.aspect_ratio ?? "—" },
+            { key: "type", header: "Type", render: (r) => r.visual_type ?? "-" },
+            { key: "concept", header: "Concept", render: (r) => r.concept ?? "-" },
+            { key: "style", header: "Style", render: (r) => r.style ?? "-" },
+            { key: "ratio", header: "Ratio", render: (r) => r.aspect_ratio ?? "-" },
             { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
             {
               key: "gamma",
@@ -50,7 +50,7 @@ function VisualsPage() {
                     Open
                   </a>
                 ) : (
-                  "—"
+                  "-"
                 );
               },
             },

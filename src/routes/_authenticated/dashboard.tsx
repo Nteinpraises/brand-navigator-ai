@@ -10,9 +10,9 @@ import { getDashboard } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Content Intelligence" },
+      { title: "Dashboard - Content Intelligence" },
       { name: "description", content: "Today's content plan, research signals and automation runs." },
-      { property: "og:title", content: "Dashboard — Content Intelligence" },
+      { property: "og:title", content: "Dashboard - Content Intelligence" },
       { property: "og:description", content: "Today's content plan, research signals and automation runs." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -64,14 +64,14 @@ function DashboardPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={data.calendar.status} />
                       <span className="text-xs text-muted-foreground">
-                        Audience: {data.calendar.audiences?.name ?? "—"} · Pillar:{" "}
-                        {data.calendar.content_pillars?.name ?? "—"} · Format:{" "}
-                        {data.calendar.format ?? "—"}
+                        Audience: {data.calendar.audiences?.name ?? "-"} · Pillar:{" "}
+                        {data.calendar.content_pillars?.name ?? "-"} · Format:{" "}
+                        {data.calendar.format ?? "-"}
                       </span>
                     </div>
                     {data.opportunity ? (
                       <p className="text-muted-foreground">
-                        Hook: {data.opportunity.suggested_hook ?? "—"}
+                        Hook: {data.opportunity.suggested_hook ?? "-"}
                       </p>
                     ) : null}
                     {data.draft ? (
@@ -107,7 +107,7 @@ function DashboardPage() {
                       <p className="font-medium">{item.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.source_name ?? "Unknown source"} · {item.category ?? "general"} · score{" "}
-                        {item.relevance_score ?? "—"}
+                        {item.relevance_score ?? "-"}
                       </p>
                     </div>
                   ))
@@ -132,7 +132,7 @@ function DashboardPage() {
                     <div>
                       <p className="font-medium">{run.workflow_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {run.run_date ?? "—"} {run.error_message ? `· ${run.error_message}` : ""}
+                        {run.run_date ?? "-"} {run.error_message ? `· ${run.error_message}` : ""}
                       </p>
                     </div>
                     <StatusBadge status={run.status} />

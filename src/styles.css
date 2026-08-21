@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system — "signal deck": graphite surfaces, cyan signal accent,
+ * Design system - "signal deck": graphite surfaces, cyan signal accent,
  * technical typography. All colors are oklch semantic tokens.
  */
 

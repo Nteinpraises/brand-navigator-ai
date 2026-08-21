@@ -11,9 +11,9 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Reset password — Content Intelligence Console" },
+      { title: "Reset password - Content Intelligence Console" },
       { name: "description", content: "Choose a new password for your console account." },
-      { property: "og:title", content: "Reset password — Content Intelligence Console" },
+      { property: "og:title", content: "Reset password - Content Intelligence Console" },
       { property: "og:description", content: "Choose a new password for your console account." },
     ],
   }),

@@ -27,12 +27,12 @@ import {
 export const Route = createFileRoute("/_authenticated/brand-profile")({
   head: () => ({
     meta: [
-      { title: "Brand Profile — Content Intelligence" },
+      { title: "Brand Profile - Content Intelligence" },
       {
         name: "description",
         content: "Manage positioning, audiences, pillars, stories and case studies.",
       },
-      { property: "og:title", content: "Brand Profile — Content Intelligence" },
+      { property: "og:title", content: "Brand Profile - Content Intelligence" },
       {
         property: "og:description",
         content: "Manage positioning, audiences, pillars, stories and case studies.",

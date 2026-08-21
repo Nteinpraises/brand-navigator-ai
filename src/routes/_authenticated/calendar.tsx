@@ -48,9 +48,9 @@ import {
 export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({
     meta: [
-      { title: "Content Calendar — Content Intelligence" },
+      { title: "Content Calendar - Content Intelligence" },
       { name: "description", content: "Plan your week: audience, pillar, topic, objective, format and status for every scheduled post." },
-      { property: "og:title", content: "Content Calendar — Content Intelligence" },
+      { property: "og:title", content: "Content Calendar - Content Intelligence" },
       { property: "og:description", content: "Plan your week: audience, pillar, topic, objective, format and status for every scheduled post." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -134,7 +134,7 @@ function CalendarPage() {
   const entries = data?.entries ?? [];
 
   return (
-    <AppShell title="Content Calendar" description="A week at a glance — plan, edit and track every post.">
+    <AppShell title="Content Calendar" description="A week at a glance - plan, edit and track every post.">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
@@ -343,8 +343,8 @@ function CalendarPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <StatusBadge status={detail.data.entry.status} />
                 <span className="text-xs text-muted-foreground">
-                  Audience: {detail.data.entry.audiences?.name ?? "—"} · Pillar:{" "}
-                  {detail.data.entry.content_pillars?.name ?? "—"}
+                  Audience: {detail.data.entry.audiences?.name ?? "-"} · Pillar:{" "}
+                  {detail.data.entry.content_pillars?.name ?? "-"}
                 </span>
               </div>
 
@@ -360,11 +360,11 @@ function CalendarPage() {
                     <>
                       <StatusBadge status={detail.data.opportunity.status} />
                       <p className="text-xs text-muted-foreground">
-                        Score {detail.data.opportunity.overall_score ?? "—"}
+                        Score {detail.data.opportunity.overall_score ?? "-"}
                       </p>
-                      <p className="text-xs">{detail.data.opportunity.key_insight ?? detail.data.opportunity.why_it_matters ?? "—"}</p>
+                      <p className="text-xs">{detail.data.opportunity.key_insight ?? detail.data.opportunity.why_it_matters ?? "-"}</p>
                       <p className="text-xs text-muted-foreground">
-                        Hook: {detail.data.opportunity.suggested_hook ?? "—"}
+                        Hook: {detail.data.opportunity.suggested_hook ?? "-"}
                       </p>
                     </>
                   ) : (
@@ -378,8 +378,8 @@ function CalendarPage() {
                     <>
                       <StatusBadge status={detail.data.draft.status} />
                       <p className="text-xs font-medium">{detail.data.draft.title ?? "Untitled draft"}</p>
-                      <p className="text-xs text-muted-foreground">{detail.data.draft.hook ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">Model: {detail.data.draft.ai_model ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground">{detail.data.draft.hook ?? "-"}</p>
+                      <p className="text-xs text-muted-foreground">Model: {detail.data.draft.ai_model ?? "-"}</p>
                     </>
                   ) : (
                     <p className="text-xs text-muted-foreground">No draft yet.</p>
@@ -391,8 +391,8 @@ function CalendarPage() {
                   {detail.data.visual ? (
                     <>
                       <StatusBadge status={detail.data.visual.status} />
-                      <p className="text-xs">{detail.data.visual.visual_type ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">{detail.data.visual.concept ?? "—"}</p>
+                      <p className="text-xs">{detail.data.visual.visual_type ?? "-"}</p>
+                      <p className="text-xs text-muted-foreground">{detail.data.visual.concept ?? "-"}</p>
                       {detail.data.visual.gamma_generations?.[0]?.gamma_url ? (
                         <a
                           href={detail.data.visual.gamma_generations[0].gamma_url as string}

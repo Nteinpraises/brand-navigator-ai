@@ -9,9 +9,9 @@ import { getAnalytics } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — Content Intelligence" },
+      { title: "Analytics - Content Intelligence" },
       { name: "description", content: "Performance of published content: reach, engagement and leads." },
-      { property: "og:title", content: "Analytics — Content Intelligence" },
+      { property: "og:title", content: "Analytics - Content Intelligence" },
       { property: "og:description", content: "Performance of published content: reach, engagement and leads." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -34,8 +34,8 @@ function AnalyticsPage() {
           emptyTitle="No analytics yet"
           emptyHint="Post-performance rows synced from LinkedIn will appear here."
           columns={[
-            { key: "content", header: "Content", render: (r) => r.content_drafts?.title ?? "—" },
-            { key: "published", header: "Published", render: (r) => r.published_at?.slice(0, 10) ?? "—" },
+            { key: "content", header: "Content", render: (r) => r.content_drafts?.title ?? "-" },
+            { key: "published", header: "Published", render: (r) => r.published_at?.slice(0, 10) ?? "-" },
             { key: "impressions", header: "Impressions", render: (r) => r.impressions ?? 0 },
             { key: "reactions", header: "Reactions", render: (r) => r.reactions ?? 0 },
             { key: "comments", header: "Comments", render: (r) => r.comments ?? 0 },

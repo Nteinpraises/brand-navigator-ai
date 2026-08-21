@@ -10,9 +10,9 @@ import { getOpportunities } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/opportunities")({
   head: () => ({
     meta: [
-      { title: "Content Opportunities — Content Intelligence" },
+      { title: "Content Opportunities - Content Intelligence" },
       { name: "description", content: "Scored content ideas ranked by opportunity strength." },
-      { property: "og:title", content: "Content Opportunities — Content Intelligence" },
+      { property: "og:title", content: "Content Opportunities - Content Intelligence" },
       { property: "og:description", content: "Scored content ideas ranked by opportunity strength." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -39,11 +39,11 @@ function OpportunitiesPage() {
           emptyHint="Scored ideas from your automation will appear here, highest score first."
           columns={[
             { key: "topic", header: "Topic", render: (r) => r.topic },
-            { key: "angle", header: "Angle", render: (r) => r.suggested_angle ?? "—" },
-            { key: "audience", header: "Audience", render: (r) => r.audiences?.name ?? "—" },
-            { key: "pillar", header: "Pillar", render: (r) => r.content_pillars?.name ?? "—" },
-            { key: "format", header: "Format", render: (r) => r.recommended_format ?? "—" },
-            { key: "score", header: "Score", render: (r) => r.overall_score ?? "—" },
+            { key: "angle", header: "Angle", render: (r) => r.suggested_angle ?? "-" },
+            { key: "audience", header: "Audience", render: (r) => r.audiences?.name ?? "-" },
+            { key: "pillar", header: "Pillar", render: (r) => r.content_pillars?.name ?? "-" },
+            { key: "format", header: "Format", render: (r) => r.recommended_format ?? "-" },
+            { key: "score", header: "Score", render: (r) => r.overall_score ?? "-" },
             { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
           ]}
         />
