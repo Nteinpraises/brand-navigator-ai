@@ -3,15 +3,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AI Content Intelligence & Brand Automation — Ntein Praises" },
+      { title: "AI Content Intelligence & Brand Automation - Ntein Praises" },
       {
         name: "description",
         content:
-          "A private console that turns daily research into scored content opportunities, drafts, visuals and analytics — driven by n8n automation.",
+          "A private console that turns daily research into scored content opportunities, drafts, visuals and analytics - driven by n8n automation.",
       },
       {
         property: "og:title",
-        content: "AI Content Intelligence & Brand Automation — Ntein Praises",
+        content: "AI Content Intelligence & Brand Automation - Ntein Praises",
       },
       {
         property: "og:description",
@@ -34,7 +34,7 @@ function Landing() {
       </h1>
       <p className="mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
         Daily research intake, scored content opportunities, drafts, visual prompts and performance
-        analytics — one pipeline, wired for n8n.
+        analytics - one pipeline, wired for n8n.
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Link

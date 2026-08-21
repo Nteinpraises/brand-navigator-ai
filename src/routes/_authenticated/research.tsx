@@ -9,9 +9,9 @@ import { getResearch } from "@/lib/data.functions";
 export const Route = createFileRoute("/_authenticated/research")({
   head: () => ({
     meta: [
-      { title: "Research — Content Intelligence" },
+      { title: "Research - Content Intelligence" },
       { name: "description", content: "Collected AI industry signals scored for relevance and credibility." },
-      { property: "og:title", content: "Research — Content Intelligence" },
+      { property: "og:title", content: "Research - Content Intelligence" },
       { property: "og:description", content: "Collected AI industry signals scored for relevance and credibility." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -46,11 +46,11 @@ function ResearchPage() {
                   r.title
                 ),
             },
-            { key: "source", header: "Source", render: (r) => r.source_name ?? "—" },
-            { key: "category", header: "Category", render: (r) => r.category ?? "—" },
-            { key: "relevance", header: "Relevance", render: (r) => r.relevance_score ?? "—" },
-            { key: "credibility", header: "Credibility", render: (r) => r.credibility_score ?? "—" },
-            { key: "published", header: "Published", render: (r) => r.published_at?.slice(0, 10) ?? "—" },
+            { key: "source", header: "Source", render: (r) => r.source_name ?? "-" },
+            { key: "category", header: "Category", render: (r) => r.category ?? "-" },
+            { key: "relevance", header: "Relevance", render: (r) => r.relevance_score ?? "-" },
+            { key: "credibility", header: "Credibility", render: (r) => r.credibility_score ?? "-" },
+            { key: "published", header: "Published", render: (r) => r.published_at?.slice(0, 10) ?? "-" },
           ]}
         />
       )}

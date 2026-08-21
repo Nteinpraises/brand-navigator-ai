@@ -17,7 +17,7 @@ const TONE: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status?: string | null }) {
-  if (!status) return <span className="text-muted-foreground">—</span>;
+  if (!status) return <span className="text-muted-foreground">-</span>;
   const tone = TONE[status.toLowerCase()] ?? "bg-secondary text-secondary-foreground border-border";
   return (
     <Badge variant="outline" className={`font-mono text-[11px] uppercase ${tone}`}>

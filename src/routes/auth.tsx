@@ -12,13 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Content Intelligence Console" },
+      { title: "Sign in - Content Intelligence Console" },
       {
         name: "description",
         content:
           "Sign in to the AI content intelligence and personal brand automation console for Ntein Praises.",
       },
-      { property: "og:title", content: "Sign in — Content Intelligence Console" },
+      { property: "og:title", content: "Sign in - Content Intelligence Console" },
       {
         property: "og:description",
         content: "Access your research, opportunities, drafts and automation runs.",
@@ -95,7 +95,7 @@ function AuthPage() {
             Personal brand automation console
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Research, opportunities, drafts and visuals — orchestrated by your n8n workflows.
+            Research, opportunities, drafts and visuals - orchestrated by your n8n workflows.
           </p>
         </div>
 
