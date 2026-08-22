@@ -94,16 +94,17 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
       }
     }
 
-    let research: unknown[] = [];
-    if (ids.size > 0) {
-      const { data: rows } = await supabase
-        .from("research_items")
-        .select(
-          "id, title, source_name, source_type, url, summary, category, relevance_score, credibility_score, published_at, extracted_facts",
-        )
-        .in("id", Array.from(ids));
-      research = rows ?? [];
-    }
+    const supporting =
+      ids.size > 0
+        ? (
+            await supabase
+              .from("research_items")
+              .select(
+                "id, title, source_name, source_type, url, summary, category, relevance_score, credibility_score, published_at",
+              )
+              .in("id", Array.from(ids))
+          ).data ?? []
+        : [];
 
-    return { opportunity, research: research as Array<Record<string, unknown>> };
+    return { opportunity, research: supporting };
   });
