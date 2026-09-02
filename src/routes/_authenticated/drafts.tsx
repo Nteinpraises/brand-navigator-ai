@@ -74,10 +74,14 @@ function StudioPage() {
   const statusFn = useServerFn(setDraftStatus);
   const regenerateFn = useServerFn(regenerateFullPost);
 
-  const { data: drafts = [], isLoading } = useQuery({
+  const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
     queryFn: () => fetchDrafts(),
   });
+
+  useEffect(() => {
+    if (error) toast.error((error as Error).message);
+  }, [error]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
