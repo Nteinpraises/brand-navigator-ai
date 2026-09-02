@@ -131,12 +131,15 @@ export const getVisuals = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("visual_prompts")
-      .select("id, visual_type, concept, style, aspect_ratio, status, created_at, gamma_generations(gamma_url, status)")
+      .select(
+        "id, visual_type, concept, layout, visual_text, style, aspect_ratio, status, image_prompt, gamma_prompt, image_url, created_at, draft_id, content_drafts(title), gamma_generations(gamma_url, export_url, status)",
+      )
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
 
 export const getAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
