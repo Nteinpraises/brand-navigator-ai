@@ -1,0 +1,4 @@
+DELETE FROM public.content_analytics WHERE (draft_id IS NOT NULL AND draft_id NOT IN (SELECT id FROM public.content_drafts)) OR (calendar_id IS NOT NULL AND calendar_id NOT IN (SELECT id FROM public.content_calendar));
+ALTER TABLE public.content_analytics ADD CONSTRAINT content_analytics_draft_id_fkey FOREIGN KEY (draft_id) REFERENCES public.content_drafts(id) ON DELETE CASCADE;
+ALTER TABLE public.content_analytics ADD CONSTRAINT content_analytics_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.content_calendar(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS content_analytics_draft_id_idx ON public.content_analytics(draft_id);

@@ -279,7 +279,22 @@ export type Database = {
           saves?: number | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "content_analytics_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "content_calendar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_analytics_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "content_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_calendar: {
         Row: {
