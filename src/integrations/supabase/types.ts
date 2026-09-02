@@ -179,6 +179,54 @@ export type Database = {
         }
         Relationships: []
       }
+      case_studies: {
+        Row: {
+          client_or_project: string | null
+          created_at: string
+          id: string
+          industries: Json
+          lessons: string | null
+          metrics: Json
+          problem: string | null
+          results: string | null
+          solution: string | null
+          technologies: Json
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_or_project?: string | null
+          created_at?: string
+          id?: string
+          industries?: Json
+          lessons?: string | null
+          metrics?: Json
+          problem?: string | null
+          results?: string | null
+          solution?: string | null
+          technologies?: Json
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          client_or_project?: string | null
+          created_at?: string
+          id?: string
+          industries?: Json
+          lessons?: string | null
+          metrics?: Json
+          problem?: string | null
+          results?: string | null
+          solution?: string | null
+          technologies?: Json
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       content_analytics: {
         Row: {
           calendar_id: string | null
@@ -191,6 +239,7 @@ export type Database = {
           leads: number | null
           meetings_booked: number | null
           profile_visits: number | null
+          published_at: string | null
           reactions: number | null
           reposts: number | null
           saves: number | null
@@ -207,6 +256,7 @@ export type Database = {
           leads?: number | null
           meetings_booked?: number | null
           profile_visits?: number | null
+          published_at?: string | null
           reactions?: number | null
           reposts?: number | null
           saves?: number | null
@@ -223,6 +273,7 @@ export type Database = {
           leads?: number | null
           meetings_booked?: number | null
           profile_visits?: number | null
+          published_at?: string | null
           reactions?: number | null
           reposts?: number | null
           saves?: number | null
@@ -589,6 +640,137 @@ export type Database = {
           id?: string
           name?: string
           objectives?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      content_versions: {
+        Row: {
+          change_reason: string | null
+          content: string | null
+          created_at: string
+          draft_id: string
+          id: string
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          change_reason?: string | null
+          content?: string | null
+          created_at?: string
+          draft_id: string
+          id?: string
+          user_id?: string
+          version_number?: number
+        }
+        Update: {
+          change_reason?: string | null
+          content?: string | null
+          created_at?: string
+          draft_id?: string
+          id?: string
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_versions_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "content_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamma_generations: {
+        Row: {
+          calendar_id: string | null
+          created_at: string
+          export_url: string | null
+          gamma_url: string | null
+          id: string
+          meta: Json
+          status: string
+          updated_at: string
+          user_id: string
+          visual_prompt_id: string | null
+        }
+        Insert: {
+          calendar_id?: string | null
+          created_at?: string
+          export_url?: string | null
+          gamma_url?: string | null
+          id?: string
+          meta?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visual_prompt_id?: string | null
+        }
+        Update: {
+          calendar_id?: string | null
+          created_at?: string
+          export_url?: string | null
+          gamma_url?: string | null
+          id?: string
+          meta?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visual_prompt_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamma_generations_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "content_calendar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamma_generations_visual_prompt_id_fkey"
+            columns: ["visual_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "visual_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_stories: {
+        Row: {
+          audiences: Json
+          created_at: string
+          id: string
+          lesson: string | null
+          pillars: Json
+          story: string | null
+          title: string | null
+          topics: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audiences?: Json
+          created_at?: string
+          id?: string
+          lesson?: string | null
+          pillars?: Json
+          story?: string | null
+          title?: string | null
+          topics?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          audiences?: Json
+          created_at?: string
+          id?: string
+          lesson?: string | null
+          pillars?: Json
+          story?: string | null
+          title?: string | null
+          topics?: Json
           updated_at?: string
           user_id?: string
         }
