@@ -15,7 +15,7 @@ export type DraftInput = {
 };
 
 const DRAFT_SELECT =
-  "id, title, hook, body, cta, closing, hashtags, full_post, status, ai_model, calendar_id, opportunity_id, created_at, updated_at, content_calendar(format, scheduled_date, topic)";
+  "id, title, hook, body, cta, closing, hashtags, full_post, status, ai_model, calendar_id, opportunity_id, created_at, updated_at, content_calendar!content_drafts_calendar_id_fkey(format, scheduled_date, topic)";
 
 /** Content Studio: every draft with its calendar format. */
 export const getStudioDrafts = createServerFn({ method: "GET" })
