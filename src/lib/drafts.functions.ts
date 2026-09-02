@@ -45,11 +45,11 @@ export const getDraftVersions = createServerFn({ method: "GET" })
   });
 
 export function composeFullPost(parts: {
-  hook?: string | null;
-  body?: string | null;
-  cta?: string | null;
-  closing?: string | null;
-  hashtags?: string[];
+  hook?: string | null | undefined;
+  body?: string | null | undefined;
+  cta?: string | null | undefined;
+  closing?: string | null | undefined;
+  hashtags?: string[] | undefined;
 }) {
   const blocks = [parts.hook, parts.body, parts.cta, parts.closing]
     .map((block) => (block ?? "").trim())
