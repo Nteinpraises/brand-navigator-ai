@@ -132,10 +132,11 @@ function ResearchPage() {
     minScore: minScore ? Number(minScore) : null,
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["research-intelligence", filters],
     queryFn: () => fetchIntel({ data: filters }),
   });
+
 
   const detail = useQuery({
     queryKey: ["opportunity-detail", openId],
