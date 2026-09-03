@@ -91,10 +91,11 @@ function CalendarPage() {
   const saveEntry = useServerFn(saveCalendarEntry);
   const removeEntry = useServerFn(deleteCalendarEntry);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["calendar-week", start],
     queryFn: () => fetchWeek({ data: { start, end } }),
   });
+
 
   const detail = useQuery({
     queryKey: ["calendar-entry", detailId],
