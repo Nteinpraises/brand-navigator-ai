@@ -296,6 +296,8 @@ function ResearchPage() {
         <TabsContent value="research" className="mt-6">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading research...</p>
+          ) : error ? (
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
           ) : research.length === 0 ? (
             <Card className="border-dashed p-10 text-center">
               <p className="font-display text-base font-semibold">No research matches</p>
