@@ -22,12 +22,14 @@ export const Route = createFileRoute("/_authenticated/analytics")({
 
 function AnalyticsPage() {
   const fetchAnalytics = useServerFn(getAnalytics);
-  const { data = [], isLoading } = useQuery({ queryKey: ["analytics"], queryFn: () => fetchAnalytics() });
+  const { data = [], isLoading, error } = useQuery({ queryKey: ["analytics"], queryFn: () => fetchAnalytics() });
 
   return (
     <AppShell title="Analytics" description="What your published content actually did.">
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading analytics…</p>
+      ) : error ? (
+        <p className="text-sm text-destructive">{(error as Error).message}</p>
       ) : (
         <RecordTable
           rows={data}
