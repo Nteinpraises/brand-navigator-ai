@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const fetchRuns = useServerFn(getAutomationRuns);
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading, error } = useQuery({
     queryKey: ["automation-runs"],
     queryFn: () => fetchRuns(),
   });
@@ -37,6 +37,8 @@ function SettingsPage() {
         <CardContent className="space-y-3 text-sm">
           {isLoading ? (
             <p className="text-muted-foreground">Loading runs…</p>
+          ) : error ? (
+            <p className="text-destructive">{(error as Error).message}</p>
           ) : data.length === 0 ? (
             <p className="text-muted-foreground">
               No automation runs yet. Your n8n workflows can log into automation_runs.

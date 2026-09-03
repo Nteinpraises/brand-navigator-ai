@@ -132,10 +132,11 @@ function ResearchPage() {
     minScore: minScore ? Number(minScore) : null,
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["research-intelligence", filters],
     queryFn: () => fetchIntel({ data: filters }),
   });
+
 
   const detail = useQuery({
     queryKey: ["opportunity-detail", openId],
@@ -246,6 +247,8 @@ function ResearchPage() {
         <TabsContent value="opportunities" className="mt-6">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading opportunities...</p>
+          ) : error ? (
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
           ) : opportunities.length === 0 ? (
             <Card className="border-dashed p-10 text-center">
               <p className="font-display text-base font-semibold">No opportunities match</p>
@@ -293,6 +296,8 @@ function ResearchPage() {
         <TabsContent value="research" className="mt-6">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading research...</p>
+          ) : error ? (
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
           ) : research.length === 0 ? (
             <Card className="border-dashed p-10 text-center">
               <p className="font-display text-base font-semibold">No research matches</p>

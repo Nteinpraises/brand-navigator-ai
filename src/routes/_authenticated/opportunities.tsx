@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/opportunities")({
 
 function OpportunitiesPage() {
   const fetchOpportunities = useServerFn(getOpportunities);
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading, error } = useQuery({
     queryKey: ["opportunities"],
     queryFn: () => fetchOpportunities(),
   });
@@ -32,6 +32,8 @@ function OpportunitiesPage() {
     <AppShell title="Content Opportunities" description="Ranked ideas ready to become drafts.">
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading opportunities…</p>
+      ) : error ? (
+        <p className="text-sm text-destructive">{(error as Error).message}</p>
       ) : (
         <RecordTable
           rows={data}
