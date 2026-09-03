@@ -159,6 +159,8 @@ function CalendarPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading week…</p>
+      ) : error ? (
+        <p className="text-sm text-destructive">{(error as Error).message}</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           {days.map((day) => {
