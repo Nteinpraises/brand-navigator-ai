@@ -400,12 +400,17 @@ export type Database = {
           closing: string | null
           created_at: string
           cta: string | null
+          day_theme: string | null
           feedback: string | null
           full_post: string | null
           generation_metadata: Json
           hashtags: Json
           hook: string | null
           id: string
+          image_path: string | null
+          image_url: string | null
+          linkedin_post_id: string | null
+          linkedin_published_at: string | null
           opportunity_id: string | null
           published_at: string | null
           recommended_format: string | null
@@ -422,12 +427,17 @@ export type Database = {
           closing?: string | null
           created_at?: string
           cta?: string | null
+          day_theme?: string | null
           feedback?: string | null
           full_post?: string | null
           generation_metadata?: Json
           hashtags?: Json
           hook?: string | null
           id?: string
+          image_path?: string | null
+          image_url?: string | null
+          linkedin_post_id?: string | null
+          linkedin_published_at?: string | null
           opportunity_id?: string | null
           published_at?: string | null
           recommended_format?: string | null
@@ -444,12 +454,17 @@ export type Database = {
           closing?: string | null
           created_at?: string
           cta?: string | null
+          day_theme?: string | null
           feedback?: string | null
           full_post?: string | null
           generation_metadata?: Json
           hashtags?: Json
           hook?: string | null
           id?: string
+          image_path?: string | null
+          image_url?: string | null
+          linkedin_post_id?: string | null
+          linkedin_published_at?: string | null
           opportunity_id?: string | null
           published_at?: string | null
           recommended_format?: string | null
