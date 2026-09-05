@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, History, RefreshCw, Save, X } from "lucide-react";
+import { Check, History, ImagePlus, Linkedin, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
@@ -23,6 +23,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { DAY_THEMES, themeById } from "@/lib/voice";
+import { generateDraft, rewriteDraftInVoice } from "@/lib/ai.functions";
+import { publishDraftToLinkedIn } from "@/lib/linkedin.functions";
+import {
+  setDraftImage,
+  getDraftImageLink,
   getStudioDrafts,
   getDraftVersions,
   saveDraft,
@@ -73,6 +86,11 @@ function StudioPage() {
   const saveFn = useServerFn(saveDraft);
   const statusFn = useServerFn(setDraftStatus);
   const regenerateFn = useServerFn(regenerateFullPost);
+  const generateFn = useServerFn(generateDraft);
+  const rewriteFn = useServerFn(rewriteDraftInVoice);
+  const publishFn = useServerFn(publishDraftToLinkedIn);
+  const setImageFn = useServerFn(setDraftImage);
+  const imageLinkFn = useServerFn(getDraftImageLink);
 
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
@@ -84,6 +102,9 @@ function StudioPage() {
   }, [error]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<string>(DAY_THEMES[0]!.id);
+  const [topic, setTopic] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [form, setForm] = useState({
@@ -112,6 +133,17 @@ function StudioPage() {
     });
     setEditing(false);
   }, [selected?.id]);
+
+  const imagePath = selected?.image_path ?? null;
+  const { data: imageLink } = useQuery({
+    queryKey: ["draft-image", imagePath],
+    queryFn: () => imageLinkFn({ data: { imagePath: imagePath! } }),
+    enabled: Boolean(imagePath),
+  });
+
+  useEffect(() => {
+    if (selected?.day_theme) setTheme(selected.day_theme);
+  }, [selected?.id, selected?.day_theme]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["studio-drafts"] });
@@ -145,6 +177,62 @@ function StudioPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const generate = useMutation({
+    mutationFn: () => generateFn({ data: { dayTheme: theme, topic: topic.trim() || undefined } }),
+    onSuccess: (result) => {
+      toast.success("New post written in your voice");
+      setTopic("");
+      setSelectedId(result.id);
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const rewrite = useMutation({
+    mutationFn: () => rewriteFn({ data: { id: selected!.id, dayTheme: theme } }),
+    onSuccess: () => {
+      toast.success("Rewritten in your voice, saved as a new version");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const publish = useMutation({
+    mutationFn: () => publishFn({ data: { id: selected!.id } }),
+    onSuccess: (result) => {
+      toast.success(result.url ? "Posted to LinkedIn" : "Posted to LinkedIn");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const attachImage = useMutation({
+    mutationFn: (path: string | null) => setImageFn({ data: { id: selected!.id, imagePath: path } }),
+    onSuccess: () => invalidate(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  async function handleUpload(file: File) {
+    if (!selected) return;
+    setUploading(true);
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw new Error("Please sign in again.");
+      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${userData.user.id}/${selected.id}-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("post-images")
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (uploadError) throw new Error(uploadError.message);
+      await attachImage.mutateAsync(path);
+      toast.success("Image attached to this post");
+    } catch (uploadError) {
+      toast.error((uploadError as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const previewText = editing
     ? composeFullPost(form)
