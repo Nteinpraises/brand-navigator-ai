@@ -232,3 +232,40 @@ export const restoreDraftVersion = createServerFn({ method: "POST" })
 
     return updated;
   });
+
+/** Attach (or clear) the uploaded image for a draft. */
+export const setDraftImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; imagePath: string | null }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: current } = await supabase
+      .from("content_drafts")
+      .select("image_path")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (current?.image_path && current.image_path !== data.imagePath) {
+      await supabase.storage.from("post-images").remove([current.image_path]);
+    }
+
+    const { error } = await supabase
+      .from("content_drafts")
+      .update({ image_path: data.imagePath, image_url: null } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** A short lived link so the app can show the attached image. */
+export const getDraftImageLink = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { imagePath: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { data: signed, error } = await context.supabase.storage
+      .from("post-images")
+      .createSignedUrl(data.imagePath, 60 * 60);
+    if (error) throw new Error(error.message);
+    return { url: signed?.signedUrl ?? null };
+  });
