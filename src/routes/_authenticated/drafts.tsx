@@ -243,6 +243,40 @@ function StudioPage() {
       title="Content Studio"
       description="Review, edit and approve drafts with a live LinkedIn preview."
     >
+      <Card className="mb-6 space-y-4 p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Write a new post in your voice
+          </h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
+          <Select value={theme} onValueChange={setTheme}>
+            <SelectTrigger>
+              <SelectValue placeholder="Post type" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAY_THEMES.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Optional: what should this post be about?"
+          />
+          <Button onClick={() => generate.mutate()} disabled={generate.isPending}>
+            <Wand2 className="size-4" /> {generate.isPending ? "Writing…" : "Write post"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {themeById(theme)?.description}
+        </p>
+      </Card>
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading drafts…</p>
       ) : drafts.length === 0 ? (
@@ -338,8 +372,28 @@ function StudioPage() {
                     >
                       <RefreshCw className="size-4" /> Regenerate
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => rewrite.mutate()}
+                      disabled={rewrite.isPending}
+                    >
+                      <Wand2 className="size-4" /> {rewrite.isPending ? "Rewriting…" : "Rewrite in my voice"}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
                       <History className="size-4" /> Versions
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => publish.mutate()}
+                      disabled={publish.isPending || Boolean(selected.linkedin_post_id)}
+                    >
+                      <Linkedin className="size-4" />
+                      {selected.linkedin_post_id
+                        ? "Posted to LinkedIn"
+                        : publish.isPending
+                          ? "Posting…"
+                          : "Post to LinkedIn"}
                     </Button>
                   </div>
                 </div>
@@ -426,6 +480,52 @@ function StudioPage() {
 
                 <Card className="space-y-4 p-5">
                   <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Post image
+                  </h3>
+                  {imageLink?.url ? (
+                    <img
+                      src={imageLink.url}
+                      alt="Attached post image"
+                      className="w-full rounded-lg border border-border object-cover"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No image attached yet. Upload one and it goes out with the post.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) void handleUpload(file);
+                        }}
+                      />
+                      <Button asChild size="sm" variant="outline" disabled={uploading}>
+                        <span>
+                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload image"}
+                        </span>
+                      </Button>
+                    </label>
+                    {selected.image_path ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => attachImage.mutate(null)}
+                        disabled={attachImage.isPending}
+                      >
+                        <Trash2 className="size-4" /> Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </Card>
+
+                <Card className="space-y-4 p-5">
+                  <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     LinkedIn preview
                   </h3>
                   <div className="rounded-xl border border-border bg-card p-4">
@@ -443,6 +543,13 @@ function StudioPage() {
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {previewText || "Nothing to preview yet."}
                     </p>
+                    {imageLink?.url ? (
+                      <img
+                        src={imageLink.url}
+                        alt="Post image preview"
+                        className="mt-4 w-full rounded-md border border-border object-cover"
+                      />
+                    ) : null}
                     <Separator className="my-4" />
                     <div className="flex justify-between text-xs font-medium text-muted-foreground">
                       <span>Like</span>
