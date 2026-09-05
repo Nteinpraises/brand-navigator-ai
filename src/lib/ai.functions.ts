@@ -163,7 +163,13 @@ export const listDayThemes = createServerFn({ method: "GET" }).handler(async () 
 export const generateDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { dayTheme?: string; topic?: string; notes?: string; scheduledDate?: string; calendarId?: string }) => data,
+    (data: {
+      dayTheme?: string | undefined;
+      topic?: string | undefined;
+      notes?: string | undefined;
+      scheduledDate?: string | undefined;
+      calendarId?: string | undefined;
+    }) => data,
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -227,7 +233,7 @@ export const generateDraft = createServerFn({ method: "POST" })
 /** Rewrite an existing draft so it follows the playbook. */
 export const rewriteDraftInVoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; dayTheme?: string; instruction?: string }) => data)
+  .inputValidator((data: { id: string; dayTheme?: string | undefined; instruction?: string | undefined }) => data)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 

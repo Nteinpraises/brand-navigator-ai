@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, History, RefreshCw, Save, X } from "lucide-react";
+import { Check, History, ImagePlus, Linkedin, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
@@ -23,6 +23,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { DAY_THEMES, themeById } from "@/lib/voice";
+import { generateDraft, rewriteDraftInVoice } from "@/lib/ai.functions";
+import { publishDraftToLinkedIn } from "@/lib/linkedin.functions";
+import {
+  setDraftImage,
+  getDraftImageLink,
   getStudioDrafts,
   getDraftVersions,
   saveDraft,
@@ -73,6 +86,11 @@ function StudioPage() {
   const saveFn = useServerFn(saveDraft);
   const statusFn = useServerFn(setDraftStatus);
   const regenerateFn = useServerFn(regenerateFullPost);
+  const generateFn = useServerFn(generateDraft);
+  const rewriteFn = useServerFn(rewriteDraftInVoice);
+  const publishFn = useServerFn(publishDraftToLinkedIn);
+  const setImageFn = useServerFn(setDraftImage);
+  const imageLinkFn = useServerFn(getDraftImageLink);
 
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
@@ -84,6 +102,9 @@ function StudioPage() {
   }, [error]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<string>(DAY_THEMES[0]!.id);
+  const [topic, setTopic] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [form, setForm] = useState({
@@ -112,6 +133,17 @@ function StudioPage() {
     });
     setEditing(false);
   }, [selected?.id]);
+
+  const imagePath = selected?.image_path ?? null;
+  const { data: imageLink } = useQuery({
+    queryKey: ["draft-image", imagePath],
+    queryFn: () => imageLinkFn({ data: { imagePath: imagePath! } }),
+    enabled: Boolean(imagePath),
+  });
+
+  useEffect(() => {
+    if (selected?.day_theme) setTheme(selected.day_theme);
+  }, [selected?.id, selected?.day_theme]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["studio-drafts"] });
@@ -146,6 +178,62 @@ function StudioPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const generate = useMutation({
+    mutationFn: () => generateFn({ data: { dayTheme: theme, topic: topic.trim() || undefined } }),
+    onSuccess: (result) => {
+      toast.success("New post written in your voice");
+      setTopic("");
+      setSelectedId(result.id);
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const rewrite = useMutation({
+    mutationFn: () => rewriteFn({ data: { id: selected!.id, dayTheme: theme } }),
+    onSuccess: () => {
+      toast.success("Rewritten in your voice, saved as a new version");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const publish = useMutation({
+    mutationFn: () => publishFn({ data: { id: selected!.id } }),
+    onSuccess: (result) => {
+      toast.success(result.url ? "Posted to LinkedIn" : "Posted to LinkedIn");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const attachImage = useMutation({
+    mutationFn: (path: string | null) => setImageFn({ data: { id: selected!.id, imagePath: path } }),
+    onSuccess: () => invalidate(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  async function handleUpload(file: File) {
+    if (!selected) return;
+    setUploading(true);
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw new Error("Please sign in again.");
+      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${userData.user.id}/${selected.id}-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("post-images")
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (uploadError) throw new Error(uploadError.message);
+      await attachImage.mutateAsync(path);
+      toast.success("Image attached to this post");
+    } catch (uploadError) {
+      toast.error((uploadError as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const previewText = editing
     ? composeFullPost(form)
     : (selected?.full_post ?? composeFullPost(form));
@@ -155,6 +243,40 @@ function StudioPage() {
       title="Content Studio"
       description="Review, edit and approve drafts with a live LinkedIn preview."
     >
+      <Card className="mb-6 space-y-4 p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Write a new post in your voice
+          </h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
+          <Select value={theme} onValueChange={setTheme}>
+            <SelectTrigger>
+              <SelectValue placeholder="Post type" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAY_THEMES.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Optional: what should this post be about?"
+          />
+          <Button onClick={() => generate.mutate()} disabled={generate.isPending}>
+            <Wand2 className="size-4" /> {generate.isPending ? "Writing…" : "Write post"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {themeById(theme)?.description}
+        </p>
+      </Card>
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading drafts…</p>
       ) : drafts.length === 0 ? (
@@ -250,8 +372,28 @@ function StudioPage() {
                     >
                       <RefreshCw className="size-4" /> Regenerate
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => rewrite.mutate()}
+                      disabled={rewrite.isPending}
+                    >
+                      <Wand2 className="size-4" /> {rewrite.isPending ? "Rewriting…" : "Rewrite in my voice"}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
                       <History className="size-4" /> Versions
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => publish.mutate()}
+                      disabled={publish.isPending || Boolean(selected.linkedin_post_id)}
+                    >
+                      <Linkedin className="size-4" />
+                      {selected.linkedin_post_id
+                        ? "Posted to LinkedIn"
+                        : publish.isPending
+                          ? "Posting…"
+                          : "Post to LinkedIn"}
                     </Button>
                   </div>
                 </div>
@@ -338,6 +480,52 @@ function StudioPage() {
 
                 <Card className="space-y-4 p-5">
                   <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Post image
+                  </h3>
+                  {imageLink?.url ? (
+                    <img
+                      src={imageLink.url}
+                      alt="Attached post image"
+                      className="w-full rounded-lg border border-border object-cover"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No image attached yet. Upload one and it goes out with the post.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) void handleUpload(file);
+                        }}
+                      />
+                      <Button asChild size="sm" variant="outline" disabled={uploading}>
+                        <span>
+                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload image"}
+                        </span>
+                      </Button>
+                    </label>
+                    {selected.image_path ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => attachImage.mutate(null)}
+                        disabled={attachImage.isPending}
+                      >
+                        <Trash2 className="size-4" /> Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </Card>
+
+                <Card className="space-y-4 p-5">
+                  <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     LinkedIn preview
                   </h3>
                   <div className="rounded-xl border border-border bg-card p-4">
@@ -355,6 +543,13 @@ function StudioPage() {
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {previewText || "Nothing to preview yet."}
                     </p>
+                    {imageLink?.url ? (
+                      <img
+                        src={imageLink.url}
+                        alt="Post image preview"
+                        className="mt-4 w-full rounded-md border border-border object-cover"
+                      />
+                    ) : null}
                     <Separator className="my-4" />
                     <div className="flex justify-between text-xs font-medium text-muted-foreground">
                       <span>Like</span>
