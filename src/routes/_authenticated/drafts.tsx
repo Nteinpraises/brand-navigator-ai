@@ -34,8 +34,9 @@ import { DAY_THEMES, themeById } from "@/lib/voice";
 import { generateDraft, rewriteDraftInVoice } from "@/lib/ai.functions";
 import { publishDraftToLinkedIn } from "@/lib/linkedin.functions";
 import {
-  setDraftImage,
-  getDraftImageLink,
+  setDraftMedia,
+  getDraftMediaLinks,
+  deleteDraft,
   getStudioDrafts,
   getDraftVersions,
   saveDraft,
@@ -76,6 +77,13 @@ function calendarOf(draft: StudioDraft) {
   return value ?? null;
 }
 
+function mediaPathsOf(draft: StudioDraft | null | undefined): string[] {
+  if (!draft) return [];
+  const stored = Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : [];
+  if (stored.length) return stored;
+  return draft.image_path ? [draft.image_path] : [];
+}
+
 function tagsOf(draft: StudioDraft): string[] {
   return Array.isArray(draft.hashtags) ? (draft.hashtags as string[]) : [];
 }
@@ -89,8 +97,9 @@ function StudioPage() {
   const generateFn = useServerFn(generateDraft);
   const rewriteFn = useServerFn(rewriteDraftInVoice);
   const publishFn = useServerFn(publishDraftToLinkedIn);
-  const setImageFn = useServerFn(setDraftImage);
-  const imageLinkFn = useServerFn(getDraftImageLink);
+  const setMediaFn = useServerFn(setDraftMedia);
+  const mediaLinksFn = useServerFn(getDraftMediaLinks);
+  const deleteFn = useServerFn(deleteDraft);
 
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
@@ -134,11 +143,11 @@ function StudioPage() {
     setEditing(false);
   }, [selected?.id]);
 
-  const imagePath = selected?.image_path ?? null;
-  const { data: imageLink } = useQuery({
-    queryKey: ["draft-image", imagePath],
-    queryFn: () => imageLinkFn({ data: { imagePath: imagePath! } }),
-    enabled: Boolean(imagePath),
+  const mediaPaths = useMemo(() => mediaPathsOf(selected), [selected]);
+  const { data: media = [] } = useQuery({
+    queryKey: ["draft-media", mediaPaths.join("|")],
+    queryFn: () => mediaLinksFn({ data: { paths: mediaPaths } }),
+    enabled: mediaPaths.length > 0,
   });
 
   useEffect(() => {
@@ -207,26 +216,43 @@ function StudioPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const attachImage = useMutation({
-    mutationFn: (path: string | null) => setImageFn({ data: { id: selected!.id, imagePath: path } }),
+  const saveMedia = useMutation({
+    mutationFn: (paths: string[]) => setMediaFn({ data: { id: selected!.id, paths } }),
     onSuccess: () => invalidate(),
     onError: (error: Error) => toast.error(error.message),
   });
 
-  async function handleUpload(file: File) {
-    if (!selected) return;
+  const removeDraft = useMutation({
+    mutationFn: () => deleteFn({ data: { id: selected!.id } }),
+    onSuccess: () => {
+      toast.success("Rejected draft deleted");
+      setSelectedId(null);
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  async function handleUpload(files: File[]) {
+    if (!selected || files.length === 0) return;
     setUploading(true);
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) throw new Error("Please sign in again.");
-      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${userData.user.id}/${selected.id}-${Date.now()}.${extension}`;
-      const { error: uploadError } = await supabase.storage
-        .from("post-images")
-        .upload(path, file, { contentType: file.type, upsert: true });
-      if (uploadError) throw new Error(uploadError.message);
-      await attachImage.mutateAsync(path);
-      toast.success("Image attached to this post");
+      const uploaded: string[] = [];
+      for (const [index, file] of files.entries()) {
+        if (file.size > 50 * 1024 * 1024) {
+          throw new Error(`${file.name} is larger than 50 MB.`);
+        }
+        const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+        const path = `${userData.user.id}/${selected.id}-${Date.now()}-${index}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("post-images")
+          .upload(path, file, { contentType: file.type, upsert: true });
+        if (uploadError) throw new Error(uploadError.message);
+        uploaded.push(path);
+      }
+      await saveMedia.mutateAsync([...mediaPaths, ...uploaded]);
+      toast.success(uploaded.length > 1 ? "Files attached to this post" : "File attached to this post");
     } catch (uploadError) {
       toast.error((uploadError as Error).message);
     } finally {
