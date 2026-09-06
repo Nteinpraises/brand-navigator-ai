@@ -233,39 +233,56 @@ export const restoreDraftVersion = createServerFn({ method: "POST" })
     return updated;
   });
 
-/** Attach (or clear) the uploaded image for a draft. */
-export const setDraftImage = createServerFn({ method: "POST" })
+function isVideoPath(path: string) {
+  return /\.(mp4|mov|webm|m4v)$/i.test(path);
+}
+
+/** Replace the media list attached to a draft; removed files are deleted. */
+export const setDraftMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; imagePath: string | null }) => data)
+  .inputValidator((data: { id: string; paths: string[] }) => data)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
 
     const { data: current } = await supabase
       .from("content_drafts")
-      .select("image_path")
+      .select("image_path, image_paths")
       .eq("id", data.id)
       .maybeSingle();
 
-    if (current?.image_path && current.image_path !== data.imagePath) {
-      await supabase.storage.from("post-images").remove([current.image_path]);
-    }
+    const previous = new Set<string>([
+      ...(Array.isArray(current?.image_paths) ? (current!.image_paths as string[]) : []),
+      ...(current?.image_path ? [current.image_path] : []),
+    ]);
+    const next = new Set(data.paths);
+    const removed = [...previous].filter((path) => !next.has(path));
+    if (removed.length) await supabase.storage.from("post-images").remove(removed);
+
+    const firstImage = data.paths.find((path) => !isVideoPath(path)) ?? null;
 
     const { error } = await supabase
       .from("content_drafts")
-      .update({ image_path: data.imagePath, image_url: null } as never)
+      .update({ image_paths: data.paths, image_path: firstImage, image_url: null } as never)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** A short lived link so the app can show the attached image. */
-export const getDraftImageLink = createServerFn({ method: "GET" })
+/** Short lived links so the app can show the attached images and videos. */
+export const getDraftMediaLinks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { imagePath: string }) => data)
+  .inputValidator((data: { paths: string[] }) => data)
   .handler(async ({ data, context }) => {
+    if (data.paths.length === 0) return [] as { path: string; url: string; kind: "image" | "video" }[];
     const { data: signed, error } = await context.supabase.storage
       .from("post-images")
-      .createSignedUrl(data.imagePath, 60 * 60);
+      .createSignedUrls(data.paths, 60 * 60);
     if (error) throw new Error(error.message);
-    return { url: signed?.signedUrl ?? null };
+    return (signed ?? [])
+      .filter((item) => item.signedUrl && item.path)
+      .map((item) => ({
+        path: item.path as string,
+        url: item.signedUrl,
+        kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
+      }));
   });
