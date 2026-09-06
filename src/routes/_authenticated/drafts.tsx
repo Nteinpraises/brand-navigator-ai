@@ -34,8 +34,9 @@ import { DAY_THEMES, themeById } from "@/lib/voice";
 import { generateDraft, rewriteDraftInVoice } from "@/lib/ai.functions";
 import { publishDraftToLinkedIn } from "@/lib/linkedin.functions";
 import {
-  setDraftImage,
-  getDraftImageLink,
+  setDraftMedia,
+  getDraftMediaLinks,
+  deleteDraft,
   getStudioDrafts,
   getDraftVersions,
   saveDraft,
@@ -76,6 +77,13 @@ function calendarOf(draft: StudioDraft) {
   return value ?? null;
 }
 
+function mediaPathsOf(draft: StudioDraft | null | undefined): string[] {
+  if (!draft) return [];
+  const stored = Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : [];
+  if (stored.length) return stored;
+  return draft.image_path ? [draft.image_path] : [];
+}
+
 function tagsOf(draft: StudioDraft): string[] {
   return Array.isArray(draft.hashtags) ? (draft.hashtags as string[]) : [];
 }
@@ -89,8 +97,9 @@ function StudioPage() {
   const generateFn = useServerFn(generateDraft);
   const rewriteFn = useServerFn(rewriteDraftInVoice);
   const publishFn = useServerFn(publishDraftToLinkedIn);
-  const setImageFn = useServerFn(setDraftImage);
-  const imageLinkFn = useServerFn(getDraftImageLink);
+  const setMediaFn = useServerFn(setDraftMedia);
+  const mediaLinksFn = useServerFn(getDraftMediaLinks);
+  const deleteFn = useServerFn(deleteDraft);
 
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
@@ -134,11 +143,11 @@ function StudioPage() {
     setEditing(false);
   }, [selected?.id]);
 
-  const imagePath = selected?.image_path ?? null;
-  const { data: imageLink } = useQuery({
-    queryKey: ["draft-image", imagePath],
-    queryFn: () => imageLinkFn({ data: { imagePath: imagePath! } }),
-    enabled: Boolean(imagePath),
+  const mediaPaths = useMemo(() => mediaPathsOf(selected), [selected]);
+  const { data: media = [] } = useQuery({
+    queryKey: ["draft-media", mediaPaths.join("|")],
+    queryFn: () => mediaLinksFn({ data: { paths: mediaPaths } }),
+    enabled: mediaPaths.length > 0,
   });
 
   useEffect(() => {
@@ -207,26 +216,43 @@ function StudioPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const attachImage = useMutation({
-    mutationFn: (path: string | null) => setImageFn({ data: { id: selected!.id, imagePath: path } }),
+  const saveMedia = useMutation({
+    mutationFn: (paths: string[]) => setMediaFn({ data: { id: selected!.id, paths } }),
     onSuccess: () => invalidate(),
     onError: (error: Error) => toast.error(error.message),
   });
 
-  async function handleUpload(file: File) {
-    if (!selected) return;
+  const removeDraft = useMutation({
+    mutationFn: () => deleteFn({ data: { id: selected!.id } }),
+    onSuccess: () => {
+      toast.success("Rejected draft deleted");
+      setSelectedId(null);
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  async function handleUpload(files: File[]) {
+    if (!selected || files.length === 0) return;
     setUploading(true);
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) throw new Error("Please sign in again.");
-      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${userData.user.id}/${selected.id}-${Date.now()}.${extension}`;
-      const { error: uploadError } = await supabase.storage
-        .from("post-images")
-        .upload(path, file, { contentType: file.type, upsert: true });
-      if (uploadError) throw new Error(uploadError.message);
-      await attachImage.mutateAsync(path);
-      toast.success("Image attached to this post");
+      const uploaded: string[] = [];
+      for (const [index, file] of files.entries()) {
+        if (file.size > 50 * 1024 * 1024) {
+          throw new Error(`${file.name} is larger than 50 MB.`);
+        }
+        const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+        const path = `${userData.user.id}/${selected.id}-${Date.now()}-${index}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("post-images")
+          .upload(path, file, { contentType: file.type, upsert: true });
+        if (uploadError) throw new Error(uploadError.message);
+        uploaded.push(path);
+      }
+      await saveMedia.mutateAsync([...mediaPaths, ...uploaded]);
+      toast.success(uploaded.length > 1 ? "Files attached to this post" : "File attached to this post");
     } catch (uploadError) {
       toast.error((uploadError as Error).message);
     } finally {
@@ -383,6 +409,16 @@ function StudioPage() {
                     <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
                       <History className="size-4" /> Versions
                     </Button>
+                    {(selected.status ?? "").toLowerCase() === "rejected" ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeDraft.mutate()}
+                        disabled={removeDraft.isPending}
+                      >
+                        <Trash2 className="size-4" /> {removeDraft.isPending ? "Deleting…" : "Delete draft"}
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       onClick={() => publish.mutate()}
@@ -480,48 +516,69 @@ function StudioPage() {
 
                 <Card className="space-y-4 p-5">
                   <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Post image
+                    Post images and video
                   </h3>
-                  {imageLink?.url ? (
-                    <img
-                      src={imageLink.url}
-                      alt="Attached post image"
-                      className="w-full rounded-lg border border-border object-cover"
-                    />
+                  {media.length ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {media.map((item) => (
+                        <div key={item.path} className="relative overflow-hidden rounded-lg border border-border">
+                          {item.kind === "video" ? (
+                            <video src={item.url} controls className="w-full" />
+                          ) : (
+                            <img src={item.url} alt="Attached post media" className="w-full object-cover" />
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="absolute right-2 top-2"
+                            onClick={() =>
+                              saveMedia.mutate(mediaPaths.filter((path) => path !== item.path))
+                            }
+                            disabled={saveMedia.isPending}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No image attached yet. Upload one and it goes out with the post.
+                      Nothing attached yet. Add images or a video and they go out with the post.
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2">
                     <label className="inline-flex">
                       <input
                         type="file"
-                        accept="image/png,image/jpeg,image/webp"
+                        multiple
+                        accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm"
                         className="hidden"
                         onChange={(e) => {
-                          const file = e.target.files?.[0];
+                          const files = Array.from(e.target.files ?? []);
                           e.target.value = "";
-                          if (file) void handleUpload(file);
+                          if (files.length) void handleUpload(files);
                         }}
                       />
                       <Button asChild size="sm" variant="outline" disabled={uploading}>
                         <span>
-                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload image"}
+                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload images or video"}
                         </span>
                       </Button>
                     </label>
-                    {selected.image_path ? (
+                    {mediaPaths.length ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => attachImage.mutate(null)}
-                        disabled={attachImage.isPending}
+                        onClick={() => saveMedia.mutate([])}
+                        disabled={saveMedia.isPending}
                       >
-                        <Trash2 className="size-4" /> Remove
+                        <Trash2 className="size-4" /> Remove all
                       </Button>
                     ) : null}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Up to 50 MB per file. LinkedIn shows several images together, or one video on its own.
+                  </p>
                 </Card>
 
                 <Card className="space-y-4 p-5">
@@ -543,12 +600,26 @@ function StudioPage() {
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {previewText || "Nothing to preview yet."}
                     </p>
-                    {imageLink?.url ? (
-                      <img
-                        src={imageLink.url}
-                        alt="Post image preview"
-                        className="mt-4 w-full rounded-md border border-border object-cover"
-                      />
+                    {media.length ? (
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {media.map((item) =>
+                          item.kind === "video" ? (
+                            <video
+                              key={item.path}
+                              src={item.url}
+                              controls
+                              className="w-full rounded-md border border-border"
+                            />
+                          ) : (
+                            <img
+                              key={item.path}
+                              src={item.url}
+                              alt="Post media preview"
+                              className="w-full rounded-md border border-border object-cover"
+                            />
+                          ),
+                        )}
+                      </div>
                     ) : null}
                     <Separator className="my-4" />
                     <div className="flex justify-between text-xs font-medium text-muted-foreground">

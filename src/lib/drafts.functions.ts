@@ -282,7 +282,7 @@ export const getDraftMediaLinks = createServerFn({ method: "GET" })
       .filter((item) => item.signedUrl && item.path)
       .map((item) => ({
         path: item.path as string,
-        url: item.signedUrl,
+        url: item.signedUrl as string,
         kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
       }));
   });
