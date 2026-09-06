@@ -1,3 +1,4 @@
 - [ ] Multiple image uploads per post
 - [ ] Video upload per post
 - [ ] Analytics tab shows real published-post data
+- [ ] Delete rejected drafts
