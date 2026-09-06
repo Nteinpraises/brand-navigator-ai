@@ -286,3 +286,37 @@ export const getDraftMediaLinks = createServerFn({ method: "GET" })
         kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
       }));
   });
+
+/** Permanently remove a rejected draft, its versions and its uploaded media. */
+export const deleteDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: draft, error } = await supabase
+      .from("content_drafts")
+      .select("id, status, image_path, image_paths, linkedin_post_id")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    if (draft.linkedin_post_id) throw new Error("A post that is already live on LinkedIn cannot be deleted here.");
+    if ((draft.status ?? "").toLowerCase() !== "rejected") {
+      throw new Error("Only rejected drafts can be deleted.");
+    }
+
+    const media = new Set<string>([
+      ...(Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []),
+      ...(draft.image_path ? [draft.image_path] : []),
+    ]);
+    if (media.size) await supabase.storage.from("post-images").remove([...media]);
+
+    await supabase.from("content_versions").delete().eq("draft_id", data.id);
+    await supabase.from("content_analytics").delete().eq("draft_id", data.id);
+    await supabase.from("visual_prompts").update({ draft_id: null }).eq("draft_id", data.id);
+    await supabase.from("content_calendar").update({ draft_id: null }).eq("draft_id", data.id);
+
+    const { error: deleteError } = await supabase.from("content_drafts").delete().eq("id", data.id);
+    if (deleteError) throw new Error(deleteError.message);
+    return { ok: true };
+  });
