@@ -409,6 +409,16 @@ function StudioPage() {
                     <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
                       <History className="size-4" /> Versions
                     </Button>
+                    {(selected.status ?? "").toLowerCase() === "rejected" ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeDraft.mutate()}
+                        disabled={removeDraft.isPending}
+                      >
+                        <Trash2 className="size-4" /> {removeDraft.isPending ? "Deleting…" : "Delete draft"}
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       onClick={() => publish.mutate()}
@@ -506,48 +516,69 @@ function StudioPage() {
 
                 <Card className="space-y-4 p-5">
                   <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Post image
+                    Post images and video
                   </h3>
-                  {imageLink?.url ? (
-                    <img
-                      src={imageLink.url}
-                      alt="Attached post image"
-                      className="w-full rounded-lg border border-border object-cover"
-                    />
+                  {media.length ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {media.map((item) => (
+                        <div key={item.path} className="relative overflow-hidden rounded-lg border border-border">
+                          {item.kind === "video" ? (
+                            <video src={item.url} controls className="w-full" />
+                          ) : (
+                            <img src={item.url} alt="Attached post media" className="w-full object-cover" />
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="absolute right-2 top-2"
+                            onClick={() =>
+                              saveMedia.mutate(mediaPaths.filter((path) => path !== item.path))
+                            }
+                            disabled={saveMedia.isPending}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No image attached yet. Upload one and it goes out with the post.
+                      Nothing attached yet. Add images or a video and they go out with the post.
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2">
                     <label className="inline-flex">
                       <input
                         type="file"
-                        accept="image/png,image/jpeg,image/webp"
+                        multiple
+                        accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm"
                         className="hidden"
                         onChange={(e) => {
-                          const file = e.target.files?.[0];
+                          const files = Array.from(e.target.files ?? []);
                           e.target.value = "";
-                          if (file) void handleUpload(file);
+                          if (files.length) void handleUpload(files);
                         }}
                       />
                       <Button asChild size="sm" variant="outline" disabled={uploading}>
                         <span>
-                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload image"}
+                          <ImagePlus className="size-4" /> {uploading ? "Uploading…" : "Upload images or video"}
                         </span>
                       </Button>
                     </label>
-                    {selected.image_path ? (
+                    {mediaPaths.length ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => attachImage.mutate(null)}
-                        disabled={attachImage.isPending}
+                        onClick={() => saveMedia.mutate([])}
+                        disabled={saveMedia.isPending}
                       >
-                        <Trash2 className="size-4" /> Remove
+                        <Trash2 className="size-4" /> Remove all
                       </Button>
                     ) : null}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Up to 50 MB per file. LinkedIn shows several images together, or one video on its own.
+                  </p>
                 </Card>
 
                 <Card className="space-y-4 p-5">
@@ -569,12 +600,26 @@ function StudioPage() {
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {previewText || "Nothing to preview yet."}
                     </p>
-                    {imageLink?.url ? (
-                      <img
-                        src={imageLink.url}
-                        alt="Post image preview"
-                        className="mt-4 w-full rounded-md border border-border object-cover"
-                      />
+                    {media.length ? (
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {media.map((item) =>
+                          item.kind === "video" ? (
+                            <video
+                              key={item.path}
+                              src={item.url}
+                              controls
+                              className="w-full rounded-md border border-border"
+                            />
+                          ) : (
+                            <img
+                              key={item.path}
+                              src={item.url}
+                              alt="Post media preview"
+                              className="w-full rounded-md border border-border object-cover"
+                            />
+                          ),
+                        )}
+                      </div>
                     ) : null}
                     <Separator className="my-4" />
                     <div className="flex justify-between text-xs font-medium text-muted-foreground">
