@@ -15,7 +15,7 @@ export type DraftInput = {
 };
 
 const DRAFT_SELECT =
-  "id, title, hook, body, cta, closing, hashtags, full_post, status, ai_model, calendar_id, opportunity_id, image_path, image_url, day_theme, linkedin_post_id, linkedin_published_at, created_at, updated_at, content_calendar!content_drafts_calendar_id_fkey(format, scheduled_date, topic)";
+  "id, title, hook, body, cta, closing, hashtags, full_post, status, ai_model, calendar_id, opportunity_id, image_path, image_paths, image_url, day_theme, linkedin_post_id, linkedin_published_at, created_at, updated_at, content_calendar!content_drafts_calendar_id_fkey(format, scheduled_date, topic)";
 
 /** Content Studio: every draft with its calendar format. */
 export const getStudioDrafts = createServerFn({ method: "GET" })
@@ -233,39 +233,90 @@ export const restoreDraftVersion = createServerFn({ method: "POST" })
     return updated;
   });
 
-/** Attach (or clear) the uploaded image for a draft. */
-export const setDraftImage = createServerFn({ method: "POST" })
+function isVideoPath(path: string) {
+  return /\.(mp4|mov|webm|m4v)$/i.test(path);
+}
+
+/** Replace the media list attached to a draft; removed files are deleted. */
+export const setDraftMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; imagePath: string | null }) => data)
+  .inputValidator((data: { id: string; paths: string[] }) => data)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
 
     const { data: current } = await supabase
       .from("content_drafts")
-      .select("image_path")
+      .select("image_path, image_paths")
       .eq("id", data.id)
       .maybeSingle();
 
-    if (current?.image_path && current.image_path !== data.imagePath) {
-      await supabase.storage.from("post-images").remove([current.image_path]);
-    }
+    const previous = new Set<string>([
+      ...(Array.isArray(current?.image_paths) ? (current!.image_paths as string[]) : []),
+      ...(current?.image_path ? [current.image_path] : []),
+    ]);
+    const next = new Set(data.paths);
+    const removed = [...previous].filter((path) => !next.has(path));
+    if (removed.length) await supabase.storage.from("post-images").remove(removed);
+
+    const firstImage = data.paths.find((path) => !isVideoPath(path)) ?? null;
 
     const { error } = await supabase
       .from("content_drafts")
-      .update({ image_path: data.imagePath, image_url: null } as never)
+      .update({ image_paths: data.paths, image_path: firstImage, image_url: null } as never)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** A short lived link so the app can show the attached image. */
-export const getDraftImageLink = createServerFn({ method: "GET" })
+/** Short lived links so the app can show the attached images and videos. */
+export const getDraftMediaLinks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { imagePath: string }) => data)
+  .inputValidator((data: { paths: string[] }) => data)
   .handler(async ({ data, context }) => {
+    if (data.paths.length === 0) return [] as { path: string; url: string; kind: "image" | "video" }[];
     const { data: signed, error } = await context.supabase.storage
       .from("post-images")
-      .createSignedUrl(data.imagePath, 60 * 60);
+      .createSignedUrls(data.paths, 60 * 60);
     if (error) throw new Error(error.message);
-    return { url: signed?.signedUrl ?? null };
+    return (signed ?? [])
+      .filter((item) => item.signedUrl && item.path)
+      .map((item) => ({
+        path: item.path as string,
+        url: item.signedUrl,
+        kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
+      }));
+  });
+
+/** Permanently remove a rejected draft, its versions and its uploaded media. */
+export const deleteDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: draft, error } = await supabase
+      .from("content_drafts")
+      .select("id, status, image_path, image_paths, linkedin_post_id")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    if (draft.linkedin_post_id) throw new Error("A post that is already live on LinkedIn cannot be deleted here.");
+    if ((draft.status ?? "").toLowerCase() !== "rejected") {
+      throw new Error("Only rejected drafts can be deleted.");
+    }
+
+    const media = new Set<string>([
+      ...(Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []),
+      ...(draft.image_path ? [draft.image_path] : []),
+    ]);
+    if (media.size) await supabase.storage.from("post-images").remove([...media]);
+
+    await supabase.from("content_versions").delete().eq("draft_id", data.id);
+    await supabase.from("content_analytics").delete().eq("draft_id", data.id);
+    await supabase.from("visual_prompts").update({ draft_id: null }).eq("draft_id", data.id);
+    await supabase.from("content_calendar").update({ draft_id: null }).eq("draft_id", data.id);
+
+    const { error: deleteError } = await supabase.from("content_drafts").delete().eq("id", data.id);
+    if (deleteError) throw new Error(deleteError.message);
+    return { ok: true };
   });

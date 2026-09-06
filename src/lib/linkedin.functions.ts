@@ -44,12 +44,25 @@ export const getLinkedInIdentity = createServerFn({ method: "GET" })
     };
   });
 
-async function uploadImage(personUrn: string, bytes: ArrayBuffer, contentType: string) {
+function isVideoPath(path: string) {
+  return /\.(mp4|mov|webm|m4v)$/i.test(path);
+}
+
+async function uploadMedia(
+  personUrn: string,
+  bytes: ArrayBuffer,
+  contentType: string,
+  kind: "image" | "video",
+) {
   const registered = (await gatewayJson("/v2/assets?action=registerUpload", {
     method: "POST",
     body: JSON.stringify({
       registerUploadRequest: {
-        recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+        recipes: [
+          kind === "video"
+            ? "urn:li:digitalmediaRecipe:feedshare-video"
+            : "urn:li:digitalmediaRecipe:feedshare-image",
+        ],
         owner: personUrn,
         serviceRelationships: [
           { relationshipType: "OWNER", identifier: "urn:li:userGeneratedContent" },
@@ -66,7 +79,7 @@ async function uploadImage(personUrn: string, bytes: ArrayBuffer, contentType: s
   const asset = registered.value?.asset;
   const mechanism = registered.value?.uploadMechanism ?? {};
   const uploadUrl = Object.values(mechanism)[0]?.uploadUrl;
-  if (!asset || !uploadUrl) throw new Error("LinkedIn did not accept the image upload request.");
+  if (!asset || !uploadUrl) throw new Error("LinkedIn did not accept the upload request.");
 
   const put = await fetch(uploadUrl, {
     method: "PUT",
@@ -75,8 +88,8 @@ async function uploadImage(personUrn: string, bytes: ArrayBuffer, contentType: s
   });
   if (!put.ok) {
     const text = await put.text();
-    console.error(`LinkedIn image upload failed [${put.status}]: ${text}`);
-    throw new Error(`The image could not be uploaded to LinkedIn [${put.status}].`);
+    console.error(`LinkedIn media upload failed [${put.status}]: ${text}`);
+    throw new Error(`The file could not be uploaded to LinkedIn [${put.status}].`);
   }
 
   return asset;
@@ -91,7 +104,7 @@ export const publishDraftToLinkedIn = createServerFn({ method: "POST" })
 
     const { data: draft, error } = await supabase
       .from("content_drafts")
-      .select("id, title, full_post, hook, body, cta, closing, hashtags, image_path, linkedin_post_id")
+      .select("id, title, full_post, hook, body, cta, closing, hashtags, image_path, image_paths, linkedin_post_id")
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
@@ -109,12 +122,21 @@ export const publishDraftToLinkedIn = createServerFn({ method: "POST" })
     if (!identity.sub) throw new Error("Could not read your LinkedIn profile.");
     const personUrn = `urn:li:person:${identity.sub}`;
 
-    let asset: string | null = null;
-    if (draft.image_path) {
-      const file = await supabase.storage.from("post-images").download(draft.image_path);
-      if (file.error || !file.data) throw new Error("The attached image could not be read.");
+    const stored = Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : [];
+    const paths = stored.length ? stored : draft.image_path ? [draft.image_path] : [];
+    const videoPaths = paths.filter(isVideoPath);
+    const imagePaths = paths.filter((path) => !isVideoPath(path));
+    // LinkedIn accepts either one video or a set of images in a single post.
+    const selectedPaths = videoPaths.length ? [videoPaths[0]!] : imagePaths.slice(0, 9);
+    const kind: "image" | "video" = videoPaths.length ? "video" : "image";
+
+    const assets: string[] = [];
+    for (const path of selectedPaths) {
+      const file = await supabase.storage.from("post-images").download(path);
+      if (file.error || !file.data) throw new Error("An attached file could not be read.");
       const bytes = await file.data.arrayBuffer();
-      asset = await uploadImage(personUrn, bytes, file.data.type || "image/png");
+      const fallback = kind === "video" ? "video/mp4" : "image/png";
+      assets.push(await uploadMedia(personUrn, bytes, file.data.type || fallback, kind));
     }
 
     const posted = (await gatewayJson("/v2/ugcPosts", {
@@ -125,16 +147,14 @@ export const publishDraftToLinkedIn = createServerFn({ method: "POST" })
         specificContent: {
           "com.linkedin.ugc.ShareContent": {
             shareCommentary: { text: commentary },
-            shareMediaCategory: asset ? "IMAGE" : "NONE",
-            ...(asset
+            shareMediaCategory: assets.length ? (kind === "video" ? "VIDEO" : "IMAGE") : "NONE",
+            ...(assets.length
               ? {
-                  media: [
-                    {
-                      status: "READY",
-                      media: asset,
-                      ...(draft.title ? { title: { text: draft.title.slice(0, 200) } } : {}),
-                    },
-                  ],
+                  media: assets.map((asset) => ({
+                    status: "READY",
+                    media: asset,
+                    ...(draft.title ? { title: { text: draft.title.slice(0, 200) } } : {}),
+                  })),
                 }
               : {}),
           },
