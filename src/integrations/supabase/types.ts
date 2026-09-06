@@ -408,6 +408,7 @@ export type Database = {
           hook: string | null
           id: string
           image_path: string | null
+          image_paths: Json
           image_url: string | null
           linkedin_post_id: string | null
           linkedin_published_at: string | null
@@ -435,6 +436,7 @@ export type Database = {
           hook?: string | null
           id?: string
           image_path?: string | null
+          image_paths?: Json
           image_url?: string | null
           linkedin_post_id?: string | null
           linkedin_published_at?: string | null
@@ -462,6 +464,7 @@ export type Database = {
           hook?: string | null
           id?: string
           image_path?: string | null
+          image_paths?: Json
           image_url?: string | null
           linkedin_post_id?: string | null
           linkedin_published_at?: string | null
