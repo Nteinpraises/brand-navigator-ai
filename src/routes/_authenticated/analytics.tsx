@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { RecordTable } from "@/components/record-table";
 import {
   getAnalyticsOverview,
   saveAnalyticsEntry,
-  syncLinkedInAnalytics,
   type AnalyticsRow,
 } from "@/lib/analytics.functions";
 
@@ -61,7 +59,6 @@ function AnalyticsPage() {
   const queryClient = useQueryClient();
   const fetchOverview = useServerFn(getAnalyticsOverview);
   const saveFn = useServerFn(saveAnalyticsEntry);
-  const syncFn = useServerFn(syncLinkedInAnalytics);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["analytics-overview"],
@@ -120,35 +117,17 @@ function AnalyticsPage() {
     onError: (saveError: Error) => toast.error(saveError.message),
   });
 
-  const sync = useMutation({
-    mutationFn: () => syncFn({}),
-    onSuccess: (result) => {
-      toast.success(
-        result.updated
-          ? `Updated ${result.updated} post${result.updated === 1 ? "" : "s"} from LinkedIn`
-          : "Nothing new to pull from LinkedIn yet",
-      );
-      queryClient.invalidateQueries({ queryKey: ["analytics-overview"] });
-    },
-    onError: (syncError: Error) => toast.error(syncError.message),
-  });
-
   const rows = data?.rows ?? [];
   const totals = data?.totals;
 
   return (
     <AppShell title="Analytics" description="What your published content actually did.">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="grid flex-1 gap-3 sm:grid-cols-5">
-          <Stat label="Published posts" value={totals?.posts ?? 0} />
-          <Stat label="Impressions" value={totals?.impressions ?? 0} />
-          <Stat label="Reactions" value={totals?.reactions ?? 0} />
-          <Stat label="Comments" value={totals?.comments ?? 0} />
-          <Stat label="Leads" value={totals?.leads ?? 0} />
-        </div>
-        <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
-          <RefreshCw className="size-4" /> {sync.isPending ? "Pulling…" : "Pull from LinkedIn"}
-        </Button>
+      <div className="mb-6 grid gap-3 sm:grid-cols-5">
+        <Stat label="Published posts" value={totals?.posts ?? 0} />
+        <Stat label="Impressions" value={totals?.impressions ?? 0} />
+        <Stat label="Reactions" value={totals?.reactions ?? 0} />
+        <Stat label="Comments" value={totals?.comments ?? 0} />
+        <Stat label="Leads" value={totals?.leads ?? 0} />
       </div>
 
       {isLoading ? (
@@ -204,8 +183,8 @@ function AnalyticsPage() {
           <DialogHeader>
             <DialogTitle>{editing?.title}</DialogTitle>
             <DialogDescription>
-              Reactions and comments can be pulled from LinkedIn. Impressions, visits and leads are
-              typed in from your LinkedIn post stats.
+Copy the numbers from the post stats on LinkedIn. LinkedIn does not let this app read
+              them automatically.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
