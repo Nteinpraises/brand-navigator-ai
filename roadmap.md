@@ -1,4 +1,4 @@
-- [ ] Multiple image uploads per post
-- [ ] Video upload per post
-- [ ] Analytics tab shows real published-post data
-- [ ] Delete rejected drafts
+- [x] Multiple image uploads per post
+- [x] Video upload per post
+- [x] Analytics tab shows real published-post data
+- [x] Delete rejected drafts
