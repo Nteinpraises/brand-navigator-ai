@@ -237,26 +237,12 @@ function isVideoPath(path: string) {
   return /\.(mp4|mov|webm|m4v)$/i.test(path);
 }
 
-/** Replace the media list attached to a draft; removed files are deleted. */
+/** Replace the media list attached to a draft. Files stay in the library for reuse. */
 export const setDraftMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string; paths: string[] }) => data)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-
-    const { data: current } = await supabase
-      .from("content_drafts")
-      .select("image_path, image_paths")
-      .eq("id", data.id)
-      .maybeSingle();
-
-    const previous = new Set<string>([
-      ...(Array.isArray(current?.image_paths) ? (current!.image_paths as string[]) : []),
-      ...(current?.image_path ? [current.image_path] : []),
-    ]);
-    const next = new Set(data.paths);
-    const removed = [...previous].filter((path) => !next.has(path));
-    if (removed.length) await supabase.storage.from("post-images").remove(removed);
 
     const firstImage = data.paths.find((path) => !isVideoPath(path)) ?? null;
 
