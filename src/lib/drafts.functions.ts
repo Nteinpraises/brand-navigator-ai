@@ -237,26 +237,12 @@ function isVideoPath(path: string) {
   return /\.(mp4|mov|webm|m4v)$/i.test(path);
 }
 
-/** Replace the media list attached to a draft; removed files are deleted. */
+/** Replace the media list attached to a draft. Files stay in the library for reuse. */
 export const setDraftMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string; paths: string[] }) => data)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-
-    const { data: current } = await supabase
-      .from("content_drafts")
-      .select("image_path, image_paths")
-      .eq("id", data.id)
-      .maybeSingle();
-
-    const previous = new Set<string>([
-      ...(Array.isArray(current?.image_paths) ? (current!.image_paths as string[]) : []),
-      ...(current?.image_path ? [current.image_path] : []),
-    ]);
-    const next = new Set(data.paths);
-    const removed = [...previous].filter((path) => !next.has(path));
-    if (removed.length) await supabase.storage.from("post-images").remove(removed);
 
     const firstImage = data.paths.find((path) => !isVideoPath(path)) ?? null;
 
@@ -287,7 +273,66 @@ export const getDraftMediaLinks = createServerFn({ method: "GET" })
       }));
   });
 
-/** Permanently remove a rejected draft, its versions and its uploaded media. */
+/** Every file this user has ever uploaded, newest first, ready to reuse. */
+export const getMediaLibrary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: files, error } = await supabase.storage.from("post-images").list(userId, {
+      limit: 200,
+      sortBy: { column: "created_at", order: "desc" },
+    });
+    if (error) throw new Error(error.message);
+
+    const paths = (files ?? [])
+      .filter((file) => file.id)
+      .map((file) => `${userId}/${file.name}`);
+    if (paths.length === 0) return [] as { path: string; url: string; kind: "image" | "video" }[];
+
+    const { data: signed, error: signError } = await supabase.storage
+      .from("post-images")
+      .createSignedUrls(paths, 60 * 60);
+    if (signError) throw new Error(signError.message);
+
+    return (signed ?? [])
+      .filter((item) => item.signedUrl && item.path)
+      .map((item) => ({
+        path: item.path as string,
+        url: item.signedUrl as string,
+        kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
+      }));
+  });
+
+/** Permanently delete a file from the library and detach it from any draft. */
+export const deleteLibraryMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { path: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.storage.from("post-images").remove([data.path]);
+    if (error) throw new Error(error.message);
+
+    const { data: drafts } = await supabase
+      .from("content_drafts")
+      .select("id, image_path, image_paths")
+      .contains("image_paths", JSON.stringify([data.path]) as never);
+
+    for (const draft of drafts ?? []) {
+      const paths = (Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []).filter(
+        (path) => path !== data.path,
+      );
+      await supabase
+        .from("content_drafts")
+        .update({
+          image_paths: paths,
+          image_path: paths.find((path) => !isVideoPath(path)) ?? null,
+        } as never)
+        .eq("id", draft.id);
+    }
+    return { ok: true };
+  });
+
+/** Permanently remove a rejected draft and its versions. Uploaded files stay in the library. */
 export const deleteDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => data)
@@ -305,11 +350,6 @@ export const deleteDraft = createServerFn({ method: "POST" })
       throw new Error("Only rejected drafts can be deleted.");
     }
 
-    const media = new Set<string>([
-      ...(Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []),
-      ...(draft.image_path ? [draft.image_path] : []),
-    ]);
-    if (media.size) await supabase.storage.from("post-images").remove([...media]);
 
     await supabase.from("content_versions").delete().eq("draft_id", data.id);
     await supabase.from("content_analytics").delete().eq("draft_id", data.id);

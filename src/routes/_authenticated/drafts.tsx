@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, History, ImagePlus, Linkedin, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { Check, History, Images, ImagePlus, Linkedin, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
@@ -36,6 +36,8 @@ import { publishDraftToLinkedIn } from "@/lib/linkedin.functions";
 import {
   setDraftMedia,
   getDraftMediaLinks,
+  getMediaLibrary,
+  deleteLibraryMedia,
   deleteDraft,
   getStudioDrafts,
   getDraftVersions,
@@ -100,6 +102,8 @@ function StudioPage() {
   const setMediaFn = useServerFn(setDraftMedia);
   const mediaLinksFn = useServerFn(getDraftMediaLinks);
   const deleteFn = useServerFn(deleteDraft);
+  const libraryFn = useServerFn(getMediaLibrary);
+  const deleteLibraryFn = useServerFn(deleteLibraryMedia);
 
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ["studio-drafts"],
@@ -116,6 +120,7 @@ function StudioPage() {
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
     hook: "",
@@ -148,6 +153,22 @@ function StudioPage() {
     queryKey: ["draft-media", mediaPaths.join("|")],
     queryFn: () => mediaLinksFn({ data: { paths: mediaPaths } }),
     enabled: mediaPaths.length > 0,
+  });
+
+  const { data: library = [], isLoading: libraryLoading } = useQuery({
+    queryKey: ["media-library"],
+    queryFn: () => libraryFn(),
+    enabled: libraryOpen,
+  });
+
+  const removeLibraryItem = useMutation({
+    mutationFn: (path: string) => deleteLibraryFn({ data: { path } }),
+    onSuccess: () => {
+      toast.success("File deleted for good");
+      queryClient.invalidateQueries({ queryKey: ["media-library"] });
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   useEffect(() => {
@@ -231,6 +252,14 @@ function StudioPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  function toggleLibraryItem(path: string) {
+    if (!selected) return;
+    const next = mediaPaths.includes(path)
+      ? mediaPaths.filter((item) => item !== path)
+      : [...mediaPaths, path];
+    saveMedia.mutate(next);
+  }
 
   async function handleUpload(files: File[]) {
     if (!selected || files.length === 0) return;
@@ -565,6 +594,9 @@ function StudioPage() {
                         </span>
                       </Button>
                     </label>
+                    <Button size="sm" variant="outline" onClick={() => setLibraryOpen(true)}>
+                      <Images className="size-4" /> Choose from past uploads
+                    </Button>
                     {mediaPaths.length ? (
                       <Button
                         size="sm"
@@ -644,6 +676,65 @@ function StudioPage() {
           onRestored={invalidate}
         />
       ) : null}
+
+      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Your past uploads</DialogTitle>
+            <DialogDescription>
+              Tap a file to add it to this post, or tap it again to take it off.
+            </DialogDescription>
+          </DialogHeader>
+          {libraryLoading ? (
+            <p className="text-sm text-muted-foreground">Loading your files...</p>
+          ) : library.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing here yet. Everything you upload from now on shows up in this list.
+            </p>
+          ) : (
+            <div className="grid max-h-[60vh] gap-3 overflow-y-auto sm:grid-cols-3">
+              {library.map((item) => {
+                const chosen = mediaPaths.includes(item.path);
+                return (
+                  <div
+                    key={item.path}
+                    className={`relative overflow-hidden rounded-lg border-2 ${
+                      chosen ? "border-primary" : "border-border"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="block w-full"
+                      onClick={() => toggleLibraryItem(item.path)}
+                      disabled={saveMedia.isPending || !selected}
+                    >
+                      {item.kind === "video" ? (
+                        <video src={item.url} className="h-32 w-full object-cover" />
+                      ) : (
+                        <img src={item.url} alt="Past upload" className="h-32 w-full object-cover" />
+                      )}
+                    </button>
+                    {chosen ? (
+                      <span className="absolute left-2 top-2 rounded-full bg-primary p-1 text-primary-foreground">
+                        <Check className="size-3" />
+                      </span>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute right-2 top-2"
+                      onClick={() => removeLibraryItem.mutate(item.path)}
+                      disabled={removeLibraryItem.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
