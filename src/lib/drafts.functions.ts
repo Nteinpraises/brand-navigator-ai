@@ -287,6 +287,36 @@ export const getDraftMediaLinks = createServerFn({ method: "GET" })
       }));
   });
 
+/** Every file this user has ever uploaded, newest first, ready to reuse. */
+export const getMediaLibrary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: files, error } = await supabase.storage.from("post-images").list(userId, {
+      limit: 200,
+      sortBy: { column: "created_at", order: "desc" },
+    });
+    if (error) throw new Error(error.message);
+
+    const paths = (files ?? [])
+      .filter((file) => file.id)
+      .map((file) => `${userId}/${file.name}`);
+    if (paths.length === 0) return [] as { path: string; url: string; kind: "image" | "video" }[];
+
+    const { data: signed, error: signError } = await supabase.storage
+      .from("post-images")
+      .createSignedUrls(paths, 60 * 60);
+    if (signError) throw new Error(signError.message);
+
+    return (signed ?? [])
+      .filter((item) => item.signedUrl && item.path)
+      .map((item) => ({
+        path: item.path as string,
+        url: item.signedUrl as string,
+        kind: isVideoPath(item.path as string) ? ("video" as const) : ("image" as const),
+      }));
+  });
+
 /** Permanently remove a rejected draft, its versions and its uploaded media. */
 export const deleteDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
