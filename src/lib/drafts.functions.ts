@@ -303,7 +303,36 @@ export const getMediaLibrary = createServerFn({ method: "GET" })
       }));
   });
 
-/** Permanently remove a rejected draft, its versions and its uploaded media. */
+/** Permanently delete a file from the library and detach it from any draft. */
+export const deleteLibraryMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { path: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.storage.from("post-images").remove([data.path]);
+    if (error) throw new Error(error.message);
+
+    const { data: drafts } = await supabase
+      .from("content_drafts")
+      .select("id, image_path, image_paths")
+      .contains("image_paths", JSON.stringify([data.path]) as never);
+
+    for (const draft of drafts ?? []) {
+      const paths = (Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []).filter(
+        (path) => path !== data.path,
+      );
+      await supabase
+        .from("content_drafts")
+        .update({
+          image_paths: paths,
+          image_path: paths.find((path) => !isVideoPath(path)) ?? null,
+        } as never)
+        .eq("id", draft.id);
+    }
+    return { ok: true };
+  });
+
+/** Permanently remove a rejected draft and its versions. Uploaded files stay in the library. */
 export const deleteDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => data)
