@@ -350,11 +350,6 @@ export const deleteDraft = createServerFn({ method: "POST" })
       throw new Error("Only rejected drafts can be deleted.");
     }
 
-    const media = new Set<string>([
-      ...(Array.isArray(draft.image_paths) ? (draft.image_paths as string[]) : []),
-      ...(draft.image_path ? [draft.image_path] : []),
-    ]);
-    if (media.size) await supabase.storage.from("post-images").remove([...media]);
 
     await supabase.from("content_versions").delete().eq("draft_id", data.id);
     await supabase.from("content_analytics").delete().eq("draft_id", data.id);
