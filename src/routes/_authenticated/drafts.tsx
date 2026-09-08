@@ -676,6 +676,65 @@ function StudioPage() {
           onRestored={invalidate}
         />
       ) : null}
+
+      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Your past uploads</DialogTitle>
+            <DialogDescription>
+              Tap a file to add it to this post, or tap it again to take it off.
+            </DialogDescription>
+          </DialogHeader>
+          {libraryLoading ? (
+            <p className="text-sm text-muted-foreground">Loading your files...</p>
+          ) : library.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing here yet. Everything you upload from now on shows up in this list.
+            </p>
+          ) : (
+            <div className="grid max-h-[60vh] gap-3 overflow-y-auto sm:grid-cols-3">
+              {library.map((item) => {
+                const chosen = mediaPaths.includes(item.path);
+                return (
+                  <div
+                    key={item.path}
+                    className={`relative overflow-hidden rounded-lg border-2 ${
+                      chosen ? "border-primary" : "border-border"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="block w-full"
+                      onClick={() => toggleLibraryItem(item.path)}
+                      disabled={saveMedia.isPending || !selected}
+                    >
+                      {item.kind === "video" ? (
+                        <video src={item.url} className="h-32 w-full object-cover" />
+                      ) : (
+                        <img src={item.url} alt="Past upload" className="h-32 w-full object-cover" />
+                      )}
+                    </button>
+                    {chosen ? (
+                      <span className="absolute left-2 top-2 rounded-full bg-primary p-1 text-primary-foreground">
+                        <Check className="size-3" />
+                      </span>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute right-2 top-2"
+                      onClick={() => removeLibraryItem.mutate(item.path)}
+                      disabled={removeLibraryItem.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
